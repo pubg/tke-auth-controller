@@ -13,7 +13,7 @@ import (
 	"log"
 )
 
-type TKEAuthClusterRoleBinding struct {
+type TKEAuthClusterRoleBindings struct {
 	informer v1.ClusterRoleBindingInformer
 	lister   v12.ClusterRoleBindingLister
 	synced   cache.InformerSynced
@@ -26,8 +26,8 @@ const (
 	AnnotationValueManagedTKEAuthCRB = "tke-auth"
 )
 
-func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister) *TKEAuthClusterRoleBinding {
-	crb := &TKEAuthClusterRoleBinding{
+func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister) *TKEAuthClusterRoleBindings {
+	crb := &TKEAuthClusterRoleBindings{
 		informer: informer,
 		lister:   lister,
 		synced:   informer.Informer().HasSynced,
@@ -36,7 +36,7 @@ func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister
 	return crb
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) UpsertClusterRoleBindings(newCRBs []*v14.ClusterRoleBinding) error {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs []*v14.ClusterRoleBinding) error {
 	TKEAuthCRB.waitUntilCacheSync()
 
 	oldCRBs, err := TKEAuthCRB.getClusterRoleBindings()
@@ -64,7 +64,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBinding) UpsertClusterRoleBindings(newCRBs [
 	return nil
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
 		checkClusterRoleBindingIsManaged(crb)
@@ -77,7 +77,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBinding) addCRBs(CRBs []*v14.ClusterRoleBind
 	return nil
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) updateCRBs(CRBs []*v14.ClusterRoleBinding) error {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) updateCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
 		checkClusterRoleBindingIsManaged(crb)
@@ -90,7 +90,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBinding) updateCRBs(CRBs []*v14.ClusterRoleB
 	return nil
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) deleteCRBs(CRBs []*v14.ClusterRoleBinding) error {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) deleteCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
 		checkClusterRoleBindingIsManaged(crb)
@@ -110,7 +110,7 @@ func checkClusterRoleBindingIsManaged(crb *v14.ClusterRoleBinding) {
 	}
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) getClusterRoleBindings() ([]*v14.ClusterRoleBinding, error) {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.ClusterRoleBinding, error) {
 	TKEAuthCRB.waitUntilCacheSync()
 
 	CRBs, err := TKEAuthCRB.lister.List(labels.NewSelector())
@@ -129,7 +129,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBinding) getClusterRoleBindings() ([]*v14.Cl
 	return ret, nil
 }
 
-func (TKEAuthCRB *TKEAuthClusterRoleBinding) waitUntilCacheSync() {
+func (TKEAuthCRB *TKEAuthClusterRoleBindings) waitUntilCacheSync() {
 	stopCh := make(chan struct{})
 	cache.WaitForCacheSync(stopCh, TKEAuthCRB.synced)
 	<-stopCh
