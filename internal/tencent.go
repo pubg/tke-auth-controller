@@ -71,3 +71,47 @@ func newClient(region string) (*tke.Client, error) {
 
 	return client, nil
 }
+
+func (t *TKEClients) ConvertSubAccountIdToCommonNames(region string, clusterId string, subAccountIds []string) ([]string, error) {
+	client, err := t.GetClientOfRegion(region)
+	if err != nil {
+		return nil, err
+	}
+
+	// according to document, maximum subAccount per request is 50
+	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
+	const maxSubAccountPerReq = 50
+
+	CNs := make([]string, len(subAccountIds))
+
+	for i := 0; i < len(subAccountIds) / maxSubAccountPerReq; i++ {
+		length := min(maxSubAccountPerReq, len(subAccountIds) - i * maxSubAccountPerReq)
+
+		req := tke.NewDescribeClusterCommonNamesRequest()
+		req.ClusterId = &clusterId
+		req.SubaccountUins = make([]*string, length)
+
+		for j := 0; j < length; j++ {
+			req.SubaccountUins[j] = &subAccountIds[i * maxSubAccountPerReq + j]
+		}
+
+		res, err := client.DescribeClusterCommonNames(req)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, commonName := range res.Response.CommonNames {
+			CNs = append(CNs, *commonName.CN)
+		}
+	}
+
+	return CNs, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
