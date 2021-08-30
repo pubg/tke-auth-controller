@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tke-auth-sample
+  annotations:
+    tke-auth/binding-user-data: "true"
+data:
+  bindings: |
+    platform-dev-team-default:
+      roleName: xtrm:user:full-control
+      users:
+        - 200020745365
