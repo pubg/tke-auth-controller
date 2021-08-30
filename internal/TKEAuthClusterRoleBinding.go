@@ -23,6 +23,7 @@ type TKEAuthClusterRoleBinding struct {
 
 const (
 	AnnotationKeyManagedTKEAuthCRB = "tke-auth/managed-by"
+	AnnotationValueManagedTKEAuthCRB = "tke-auth"
 )
 
 func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister) *TKEAuthClusterRoleBinding {
