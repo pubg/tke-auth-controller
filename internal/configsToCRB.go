@@ -9,10 +9,6 @@ import (
 	v12 "k8s.io/api/rbac/v1"
 )
 
-type TKEAuthClusterRoleBinding struct {
-	RoleName string   `json:"roleName"`
-	Users    []string `json:"users"`
-}
 
 func ConfigsToCRBs(config v1.ConfigMap) (crb []*v12.ClusterRoleBinding, err error) {
 	data := config.Data["bindings"]
