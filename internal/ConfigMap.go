@@ -17,16 +17,16 @@ const (
 )
 
 type TKEAuthConfigMaps struct {
-	informer v1.ConfigMapInformer
-	lister   listersv1.ConfigMapLister
-	synced   cache.InformerSynced
+	Informer v1.ConfigMapInformer
+	Lister listersv1.ConfigMapLister
+	Synced cache.InformerSynced
 }
 
 func NewTKEAuthConfigMaps(informer v1.ConfigMapInformer, lister listersv1.ConfigMapLister) *TKEAuthConfigMaps {
 	authCfg := TKEAuthConfigMaps{
-		informer: informer,
-		lister:   lister,
-		synced:   informer.Informer().HasSynced,
+		Informer: informer,
+		Lister:   lister,
+		Synced:   informer.Informer().HasSynced,
 	}
 
 	return &authCfg
@@ -52,10 +52,11 @@ func ToTKEAuth(cfgMap *v12.ConfigMap) (*TKEAuth, error) {
 	return tkeAuth, nil
 }
 
-func (cfg *TKEAuthConfigMaps) GetAuthConfigMaps() ([]*v12.ConfigMap, error) {
+// returns all deep-copied configMap with "tke-auth/binding" annotation attached
+func (cfg *TKEAuthConfigMaps) GetTKEAuthConfigMaps() ([]*v12.ConfigMap, error) {
 	cfg.waitUntilCacheSync()
 
-	cfgMaps, err := cfg.lister.List(labels.NewSelector())
+	cfgMaps, err := cfg.Lister.List(labels.NewSelector())
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +72,9 @@ func (cfg *TKEAuthConfigMaps) GetAuthConfigMaps() ([]*v12.ConfigMap, error) {
 	return ret, nil
 }
 
-// wait until cache synced
+// wait until cache Synced
 func (cfg *TKEAuthConfigMaps) waitUntilCacheSync() {
 	stopCh := make(chan struct{})
-	cache.WaitForCacheSync(stopCh, cfg.synced)
+	cache.WaitForCacheSync(stopCh, cfg.Synced)
 	<-stopCh
 }

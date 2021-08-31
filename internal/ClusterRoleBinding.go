@@ -14,9 +14,9 @@ import (
 )
 
 type TKEAuthClusterRoleBindings struct {
-	informer v1.ClusterRoleBindingInformer
-	lister   v12.ClusterRoleBindingLister
-	synced   cache.InformerSynced
+	Informer v1.ClusterRoleBindingInformer
+	Lister v12.ClusterRoleBindingLister
+	Synced cache.InformerSynced
 
 	crbIface v13.ClusterRoleBindingInterface
 }
@@ -28,9 +28,9 @@ const (
 
 func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister) *TKEAuthClusterRoleBindings {
 	crb := &TKEAuthClusterRoleBindings{
-		informer: informer,
-		lister:   lister,
-		synced:   informer.Informer().HasSynced,
+		Informer: informer,
+		Lister:   lister,
+		Synced:   informer.Informer().HasSynced,
 	}
 
 	return crb
@@ -67,7 +67,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
-		checkClusterRoleBindingIsManaged(crb)
+		crb.Annotations[AnnotationKeyManagedTKEAuthCRB] = AnnotationValueManagedTKEAuthCRB
 		_, err := crbIface.Create(context.TODO(), crb, v15.CreateOptions{})
 		if err != nil {
 			return err
@@ -113,7 +113,7 @@ func checkClusterRoleBindingIsManaged(crb *v14.ClusterRoleBinding) {
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.ClusterRoleBinding, error) {
 	TKEAuthCRB.waitUntilCacheSync()
 
-	CRBs, err := TKEAuthCRB.lister.List(labels.NewSelector())
+	CRBs, err := TKEAuthCRB.Lister.List(labels.NewSelector())
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +131,6 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.C
 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) waitUntilCacheSync() {
 	stopCh := make(chan struct{})
-	cache.WaitForCacheSync(stopCh, TKEAuthCRB.synced)
+	cache.WaitForCacheSync(stopCh, TKEAuthCRB.Synced)
 	<-stopCh
 }

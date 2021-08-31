@@ -4,15 +4,12 @@ import (
 	"example.com/tke-auth-controller/internal"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/thoas/go-funk"
+	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
 	v1 "k8s.io/api/core/v1"
+	v13 "k8s.io/api/rbac/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	informersv1 "k8s.io/client-go/informers/core/v1"
-	rbacv1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
-	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 	"log"
@@ -32,34 +29,32 @@ import (
 
 const (
 	AnnotationKeyTKEAuthConfigMap = "tke-auth/binding-user-data"
-	resyncWaitTimeout = time.Second * 1
+	resyncWaitTimeout             = time.Second * 1
 )
 
 type Controller struct {
-	kubeClient        kubernetes.Interface
-	configMapInformer informersv1.ConfigMapInformer
-	configMapLister   listersv1.ConfigMapLister
-	configMapSynced   cache.InformerSynced
-	clusterRoleBindingLister rbacv1.ClusterRoleBindingInformer
-	clusterRoleBindingSynced       cache.InformerSynced
+	kubeClient                 kubernetes.Interface
+	tkeAuthConfigMap           *internal.TKEAuthConfigMaps
+	tkeAuthClusterRoleBindings *internal.TKEAuthClusterRoleBindings
+
 	syncAllClusterRoleBindingTimer *time.Timer
 
-	TKEClients *internal.TKEClients
+	clusterId string
+	tkeClient *tke.Client
 }
 
-func NewController(kubeClient kubernetes.Interface, configMapInformer informersv1.ConfigMapInformer, clusterRoleBindingInformer rbacv1.ClusterRoleBindingInformer) (*Controller, error) {
+func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string) (*Controller, error) {
 	ctl := &Controller{
-		kubeClient: kubeClient,
-		configMapInformer: configMapInformer,
-		configMapLister: configMapInformer.Lister(),
-		configMapSynced: configMapInformer.Informer().HasSynced,
-		clusterRoleBindingLister: clusterRoleBindingInformer,
-		clusterRoleBindingSynced: clusterRoleBindingInformer.Informer().HasSynced,
-		TKEClients: internal.NewTKEClients(),
+		kubeClient:                     kubeClient,
+		tkeAuthConfigMap:               tkeAuthCfg,
+		tkeAuthClusterRoleBindings:     tkeAuthCRB,
+		syncAllClusterRoleBindingTimer: nil,
+		tkeClient:                      tkeClient,
+		clusterId:                      clusterId,
 	}
 
-	ctl.configMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: ctl.onConfigMapAdded,
+	ctl.tkeAuthConfigMap.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ctl.onConfigMapAdded,
 		UpdateFunc: ctl.onConfigMapUpdated,
 		DeleteFunc: ctl.onConfigMapDeleted,
 	})
@@ -127,25 +122,46 @@ func (ctl *Controller) reserveReSyncTimer() {
 }
 
 func (ctl *Controller) syncAllClusterRoleBinding() {
-	configs, err := ctl.configMapLister.List(labels.NewSelector())
+	// 1. get all TKE-Auth config maps
+	cfgMaps, err := ctl.tkeAuthConfigMap.GetTKEAuthConfigMaps()
 	if err != nil {
-		klog.Error(errors.Wrap(err, "Cannot list configMaps"))
-		ctl.reserveReSyncTimer()
-		return
+		klog.Error(errors.Wrap(err, "Cannot get AuthConfigMaps from cluster"))
 	}
 
+	// 2. convert to tkeAuth
+	tkeAuths := make([]*internal.TKEAuth, len(cfgMaps))
+	for _, cfg := range cfgMaps {
+		tkeAuth, err := internal.ToTKEAuth(cfg)
+		if err != nil {
+			klog.Error(err)
+		} else {
+			tkeAuths = append(tkeAuths, tkeAuth)
+		}
+	}
 
-	annotatedConfigs := funk.Filter(configs, func(cfgMap *v1.ConfigMap) bool {
-		return v12.HasAnnotation(cfgMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap)
-	}) // []v12.ConfigMap
+	// 3. convert subAccountId to CommonNames
+	for _, tkeAuth := range tkeAuths {
+		subAccountIds := tkeAuth.Users
+		commonNames, err := internal.ConvertSubAccountIdToCommonNames(ctl.tkeClient, ctl.clusterId, subAccountIds)
+		if err != nil {
+			klog.Error(err)
+		} else {
+			tkeAuth.Users = commonNames
+		}
+	}
 
-	_ = annotatedConfigs
+	// 4. convert to ClusterRoleBinding
+	TKEAuthCRBs := make([]*v13.ClusterRoleBinding, len(cfgMaps))
+	for _, tkeAuth := range tkeAuths {
+		crb := tkeAuth.ToClusterRoleBinding()
+		TKEAuthCRBs = append(TKEAuthCRBs, crb)
+	}
 
-	ctl.kubeClient.RbacV1().ClusterRoleBindings().Apply()
-
-	//ctl.kubeClient.RbacV1().ClusterRoleBindings().Apply()
-
-	return
+	// 5. upsert CRBs
+	err = ctl.tkeAuthClusterRoleBindings.UpsertClusterRoleBindings(TKEAuthCRBs)
+	if err != nil {
+		klog.Error(err)
+	}
 }
 
 func (ctl *Controller) Run(stopCh <-chan struct{}) error {
@@ -154,12 +170,12 @@ func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 	log.Println("Starting Controller.")
 
 	log.Println("Waiting for informer caches to sync.")
-	if ok := cache.WaitForCacheSync(stopCh, ctl.configMapSynced, ctl.clusterRoleBindingSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, ctl.tkeAuthConfigMap.Synced, ctl.tkeAuthClusterRoleBindings.Synced); !ok {
 		return fmt.Errorf("Failed to wait for caches to sync.\n")
 	}
 
 	log.Println("Controller running...")
-	<- stopCh
+	<-stopCh
 	log.Println("Controller stopped.")
 
 	return nil

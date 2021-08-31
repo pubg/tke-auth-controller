@@ -1,6 +1,7 @@
 package main
 
 import (
+	"example.com/tke-auth-controller/internal"
 	"example.com/tke-auth-controller/internal/signals"
 	"flag"
 	"k8s.io/client-go/informers"
@@ -14,14 +15,18 @@ import (
 var (
 	masterURL string
 	kubeconfig string
+	regionName string
+	clusterId string
 )
 
 func init() {
 	flag.StringVar(&masterURL, "masterURL", "", "masterURL of kubernetes cluster.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path of kubeconfig.")
+	flag.StringVar(&regionName, "regionName", "", "region Name. eg: ap-seoul")
+	flag.StringVar(&clusterId, "clusterId", "", "cluster Id of target.")
 	flag.Parse()
 
-	if masterURL == "" || kubeconfig == "" {
+	if masterURL == "" || kubeconfig == "" || regionName == "" || clusterId == "" {
 		flag.PrintDefaults()
 	}
 }
@@ -31,6 +36,11 @@ func main() {
 
 	// setup for graceful shutdown
 	stopCh := signals.SetupSignalHandler()
+
+	tkeClient, err := internal.NewClient(regionName)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
@@ -42,14 +52,16 @@ func main() {
  		log.Fatalf("cannot create kubeClient: %s", err.Error())
 	}
 
-	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second * 30)
+	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second * 30)
+	tkeAuthCfg := internal.NewTKEAuthConfigMaps(informerFactory.Core().V1().ConfigMaps(), informerFactory.Core().V1().ConfigMaps().Lister())
+	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister())
 
-	controller, err := NewController(kubeClient, kubeInformerFactory.Core().V1().ConfigMaps(), kubeInformerFactory.Rbac().V1().ClusterRoleBindings())
+	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId)
 	if err != nil {
 		log.Fatalf("cannot create controller: %s", err.Error())
 	}
 
-	kubeInformerFactory.Start(stopCh)
+	informerFactory.Start(stopCh)
 
 	if err = controller.Run(stopCh); err != nil {
 		log.Fatalf("Error running controller: %s", err.Error())
