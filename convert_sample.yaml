@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: convert-sample
+data:
+  bindings: |
+    xtrm-platform-team:
+      roleName: "xtrm:user:full-control"
+      users:
+        - 200248372
+        - 200478381
+        - 344728318

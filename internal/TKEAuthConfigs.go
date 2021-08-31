@@ -18,13 +18,13 @@ const (
 )
 
 type Binding struct {
-	RoleName string `json:"roleName"`
-	Users []string `json:"users"`
+	RoleName string   `yaml:"roleName"`
+	Users    []string `yaml:"users"`
 }
 
 type TKEAuthConfig struct {
 	configMap *v12.ConfigMap
-	bindings map[string]Binding
+	bindings  map[string]Binding
 }
 
 // GetBindings returns all Bindings from TKEAuthConfig. note: order is not deterministic
@@ -59,6 +59,17 @@ func GetBindingsFromConfigMap(configMap *v12.ConfigMap) (*TKEAuthConfig, error) 
 	}
 
 	return bindings, nil
+}
+
+func UnMarshalYAMLToTKEAuthConfig(text string) (*TKEAuthConfig, error) {
+	authCfg := TKEAuthConfig{}
+
+	err := yaml.Unmarshal([]byte(text), &authCfg.bindings)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authCfg, nil
 }
 
 func NewTKEAuthConfigMaps(informer v1.ConfigMapInformer, lister listersv1.ConfigMapLister) *TKEAuthConfigMaps {

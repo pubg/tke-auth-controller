@@ -7,6 +7,6 @@ metadata:
 data:
   bindings: |
     platform-dev-team-default:
-      roleName: xtrm:user:full-control
+      roleName: "xtrm:user:full-control"
       users:
         - 200020745365
