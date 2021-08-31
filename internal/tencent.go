@@ -72,12 +72,7 @@ func newClient(region string) (*tke.Client, error) {
 	return client, nil
 }
 
-func (t *TKEClients) ConvertSubAccountIdToCommonNames(region string, clusterId string, subAccountIds []string) ([]string, error) {
-	client, err := t.GetClientOfRegion(region)
-	if err != nil {
-		return nil, err
-	}
-
+func ConvertSubAccountIdToCommonNames(client tke.Client, clusterId string, subAccountIds []string) ([]string, error) {
 	// according to document, maximum subAccount per request is 50
 	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
 	const maxSubAccountPerReq = 50
