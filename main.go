@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	masterURL string
+	masterURL  string
 	kubeconfig string
 	regionName string
-	clusterId string
+	clusterId  string
 )
 
 func init() {
@@ -48,13 +48,13 @@ func main() {
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
- 	if err != nil {
- 		log.Fatalf("cannot create kubeClient: %s", err.Error())
+	if err != nil {
+		log.Fatalf("cannot create kubeClient: %s", err.Error())
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second * 30)
+	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	tkeAuthCfg := internal.NewTKEAuthConfigMaps(informerFactory.Core().V1().ConfigMaps(), informerFactory.Core().V1().ConfigMaps().Lister())
-	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister())
+	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
 
 	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId)
 	if err != nil {

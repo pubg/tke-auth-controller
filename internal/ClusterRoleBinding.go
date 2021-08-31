@@ -10,6 +10,7 @@ import (
 	v13 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	v12 "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 	"log"
 )
 
@@ -19,6 +20,8 @@ type TKEAuthClusterRoleBindings struct {
 	Synced cache.InformerSynced
 
 	crbIface v13.ClusterRoleBindingInterface
+
+	stopCh <-chan struct{}
 }
 
 const (
@@ -26,11 +29,13 @@ const (
 	AnnotationValueManagedTKEAuthCRB = "tke-auth"
 )
 
-func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister) *TKEAuthClusterRoleBindings {
+func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister v12.ClusterRoleBindingLister, crbIface v13.ClusterRoleBindingInterface, stopCh <-chan struct{}) *TKEAuthClusterRoleBindings {
 	crb := &TKEAuthClusterRoleBindings{
 		Informer: informer,
 		Lister:   lister,
 		Synced:   informer.Informer().HasSynced,
+		crbIface: crbIface,
+		stopCh: stopCh,
 	}
 
 	return crb
@@ -130,7 +135,19 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.C
 }
 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) waitUntilCacheSync() {
-	stopCh := make(chan struct{})
-	cache.WaitForCacheSync(stopCh, TKEAuthCRB.Synced)
-	<-stopCh
+	klog.Infoln("Waiting TKEAuthConfigMap cache to be synced...")
+	retryCount := 0
+	for {
+		klog.Infoln("Waiting TKEAuthConfigMap cache to be synced... retryCount: %d", retryCount)
+		if cache.WaitForCacheSync(TKEAuthCRB.stopCh, TKEAuthCRB.Synced) {
+			klog.Infoln("TKEAuthConfigMap cache synced.")
+			break
+		} else {
+			retryCount += 1
+
+			if retryCount > syncRetryCountLimit {
+				panic("Cannot sync ClusterRoleBinding.")
+			}
+		}
+	}
 }
