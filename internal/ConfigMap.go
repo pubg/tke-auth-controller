@@ -45,16 +45,25 @@ func ToTKEAuth(cfgMap *v12.ConfigMap) (*TKEAuth, error) {
 	}
 
 	usersStr := cfgMap.Data[DataKeyUsers]
-	users := make([]User, 0)
-	err := yaml.Unmarshal([]byte(usersStr), users)
+	tkeAuth := &TKEAuth{
+		DefaultUserValueType: "",
+		BindingName:          bindingName,
+		RoleName:             roleName,
+		Users:                nil,
+	}
+
+	err := yaml.Unmarshal([]byte(usersStr), tkeAuth)
 	if err != nil {
 		return nil, err
 	}
 
-	tkeAuth := &TKEAuth{
-		BindingName: bindingName,
-		RoleName:    roleName,
-		Users:       users,
+	// set defaultValue if user.valueType is not provided
+	for i := 0; i < len(tkeAuth.Users); i++ {
+		user := &tkeAuth.Users[i]
+
+		if user.ValueType == "" {
+			user.ValueType = tkeAuth.DefaultUserValueType
+		}
 	}
 
 	return tkeAuth, nil

@@ -8,9 +8,7 @@ data:
   bindingName: "xtrm-platform-team-default"
   roleName: "xtrm:user:full-control"
   users: |
-    defaults:
-      users:
-        valueType: subAccountId
+    defaultUserValueType: subAccountId
     users:
       - valueType: subAccountId
         value: "200020745365"

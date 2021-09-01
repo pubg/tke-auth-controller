@@ -12,6 +12,7 @@ type User struct {
 }
 
 type TKEAuth struct {
+	DefaultUserValueType string `yaml:"defaultUserValueType"`
 	BindingName string   `yaml:"bindingName"`
 	RoleName    string   `yaml:"roleName"`
 	Users       []User `yaml:"users"`
