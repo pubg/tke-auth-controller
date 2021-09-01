@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v3"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -93,7 +94,7 @@ func (cfg *TKEAuthConfigMaps) GetTKEAuthConfigMaps() ([]*v12.ConfigMap, error) {
 func (cfg *TKEAuthConfigMaps) waitUntilCacheSync() {
 	retryCount := 0
 	for {
-		klog.Infof("Waiting TKEAuthConfigMap cache to be synced... retryCount: %d\n", retryCount)
+		klog.Infoln(fmt.Sprintf("Waiting TKEAuthConfigMap cache to be synced... retryCount: %d", retryCount))
 		if cache.WaitForCacheSync(cfg.stopCh, cfg.Synced) {
 			klog.Infoln("TKEAuthConfigMap cache synced.")
 			break

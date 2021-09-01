@@ -74,7 +74,6 @@ func (ctl *Controller) onConfigMapAdded(new interface{}) {
 	}
 
 	if v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		klog.Infof("configMap %s has annotation %s.\n", configMap.Name, AnnotationKeyTKEAuthConfigMap)
 		ctl.reserveReSyncTimer()
 	}
 }
@@ -93,12 +92,10 @@ func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
 	}
 
 	if v12.HasAnnotation(oldConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		klog.Infof("oldConfigMap %s has annotation %s.\n", oldConfigMap.Name, AnnotationKeyTKEAuthConfigMap)
 		ctl.reserveReSyncTimer()
 	}
 
 	if v12.HasAnnotation(newConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		klog.Infof("oldConfigMap %s has annotation %s.\n", oldConfigMap.Name, AnnotationKeyTKEAuthConfigMap)
 		ctl.reserveReSyncTimer()
 	}
 }
