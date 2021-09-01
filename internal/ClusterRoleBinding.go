@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	v14 "k8s.io/api/rbac/v1"
 	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -50,7 +51,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs 
 
 	deletions := difference(oldCRBs, newCRBs)
 	additions := difference(newCRBs, oldCRBs)
-	updates := intersection(oldCRBs, newCRBs)
+	updates := getUpdates(newCRBs, oldCRBs)
 
 	err = TKEAuthCRB.deleteCRBs(deletions)
 	if err != nil {
@@ -91,6 +92,30 @@ func difference(a, b []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
 	return arr
 }
 
+func getUpdates(new, old []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
+	oldSet := map[string]*v14.ClusterRoleBinding{}
+
+	// create oldSet
+	for _, crb := range old {
+		oldSet[crb.Name] = crb
+	}
+
+	updates := make([]*v14.ClusterRoleBinding, 0)
+
+	for _, oldCrb := range old {
+		newCrb, ok := oldSet[oldCrb.Name]
+
+		if ok {
+			oldCrbCopy := oldCrb.DeepCopy()
+			newCrbCopy := newCrb.DeepCopy()
+			oldCrbCopy.Subjects = newCrbCopy.Subjects
+			oldCrbCopy.RoleRef = newCrbCopy.RoleRef
+			updates = append(updates, oldCrbCopy)
+		}
+	}
+
+	return updates
+}
 // intersection returns AnB in set, key is Name, uses b's value for array
 func intersection(a, b []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
 	aSet := make(map[string]*v14.ClusterRoleBinding)
@@ -127,7 +152,7 @@ func arrayToMap(m map[string]*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
-		crb.Annotations[AnnotationKeyManagedTKEAuthCRB] = AnnotationValueManagedTKEAuthCRB
+ 		crb.Annotations[AnnotationKeyManagedTKEAuthCRB] = AnnotationValueManagedTKEAuthCRB
 		_, err := crbIface.Create(context.TODO(), crb, v15.CreateOptions{})
 		if err != nil {
 			return err
