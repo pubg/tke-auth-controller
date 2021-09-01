@@ -45,7 +45,7 @@ func ToTKEAuth(cfgMap *v12.ConfigMap) (*TKEAuth, error) {
 	}
 
 	usersStr := cfgMap.Data[DataKeyUsers]
-	users := make([]string, 0)
+	users := make([]User, 0)
 	err := yaml.Unmarshal([]byte(usersStr), users)
 	if err != nil {
 		return nil, err
