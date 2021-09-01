@@ -91,7 +91,6 @@ func (cfg *TKEAuthConfigMaps) GetTKEAuthConfigMaps() ([]*v12.ConfigMap, error) {
 
 // wait until cache Synced
 func (cfg *TKEAuthConfigMaps) waitUntilCacheSync() {
-	klog.Infoln("Waiting TKEAuthConfigMap cache to be synced...")
 	retryCount := 0
 	for {
 		klog.Infof("Waiting TKEAuthConfigMap cache to be synced... retryCount: %d\n", retryCount)

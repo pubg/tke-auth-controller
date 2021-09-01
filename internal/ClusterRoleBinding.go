@@ -189,7 +189,6 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.C
 }
 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) waitUntilCacheSync() {
-	klog.Infoln("Waiting TKEAuthConfigMap cache to be synced...")
 	retryCount := 0
 	for {
 		klog.Infoln("Waiting TKEAuthConfigMap cache to be synced... retryCount: %d", retryCount)
