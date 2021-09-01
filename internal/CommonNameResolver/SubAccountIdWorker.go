@@ -63,12 +63,13 @@ func (resolver *CommonNameResolver) ResolveCommonNames(users []internal.User) er
 func sortUsersByType(users []internal.User) map[string][]*internal.User {
 	ret := make(map[string][]*internal.User)
 
-	for _, user := range users {
+	for i := 0; i < len(users); i++ {
+		user := &users[i]
 		if _, ok := ret[user.ValueType]; !ok {
-			ret[user.ValueType] = make([]*internal.User, 1)
+			ret[user.ValueType] = make([]*internal.User, 0)
 		}
 
-		ret[user.ValueType] = append(ret[user.ValueType], &user)
+		ret[user.ValueType] = append(ret[user.ValueType], user)
 	}
 
 	return ret

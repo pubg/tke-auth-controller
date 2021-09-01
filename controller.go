@@ -133,11 +133,12 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	}
 
 	// 2. convert to tkeAuth
-	tkeAuths := make([]*internal.TKEAuth, len(cfgMaps))
+	tkeAuths := make([]*internal.TKEAuth, 0)
 	for _, cfg := range cfgMaps {
 		tkeAuth, err := internal.ToTKEAuth(cfg)
 		if err != nil {
 			klog.Error(err)
+			return
 		} else {
 			tkeAuths = append(tkeAuths, tkeAuth)
 		}
@@ -145,7 +146,7 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 
 	// 3. convert subAccountId to CommonNames
 	for _, tkeAuth := range tkeAuths {
-		err := ctl.commonNameResolver.ResolveCommonNames(tkeAuth.Users)
+		err := (ctl.commonNameResolver).ResolveCommonNames(tkeAuth.Users)
 		if err != nil {
 			klog.Error(err)
 			return
@@ -153,7 +154,7 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	}
 
 	// 4. convert to ClusterRoleBinding
-	TKEAuthCRBs := make([]*v13.ClusterRoleBinding, len(cfgMaps))
+	TKEAuthCRBs := make([]*v13.ClusterRoleBinding, 0)
 	for _, tkeAuth := range tkeAuths {
 		crb := tkeAuth.ToClusterRoleBinding()
 		TKEAuthCRBs = append(TKEAuthCRBs, crb)

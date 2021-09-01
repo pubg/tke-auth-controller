@@ -53,17 +53,17 @@ func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subA
 	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
 	const maxSubAccountPerReq = 50
 
-	CNs := make([]string, len(subAccountIds))
+	CNs := make([]string, 0)
 
-	for i := 0; i < len(subAccountIds) / maxSubAccountPerReq; i++ {
-		length := min(maxSubAccountPerReq, len(subAccountIds) - i * maxSubAccountPerReq)
+	for i := 0; i < len(subAccountIds)/maxSubAccountPerReq+1; i++ {
+		length := min(maxSubAccountPerReq, len(subAccountIds)-i*maxSubAccountPerReq)
 
 		req := tke.NewDescribeClusterCommonNamesRequest()
 		req.ClusterId = &clusterId
 		req.SubaccountUins = make([]*string, length)
 
 		for j := 0; j < length; j++ {
-			req.SubaccountUins[j] = &subAccountIds[i * maxSubAccountPerReq + j]
+			req.SubaccountUins[j] = &subAccountIds[i*maxSubAccountPerReq+j]
 		}
 
 		res, err := client.DescribeClusterCommonNames(req)

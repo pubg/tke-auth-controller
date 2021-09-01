@@ -58,7 +58,7 @@ func main() {
 	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
 	commonNameResolver := CommonNameResolver.NewCommonNameResolver()
 
-	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient)
+	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient, clusterId)
 	commonNameResolver.AddWorker(subAccountIdResolveWorker)
 
 	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver)

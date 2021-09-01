@@ -10,5 +10,5 @@ data:
   users: |
     defaultUserValueType: subAccountId
     users:
-      - valueType: subAccountId
+      - type: subAccountId
         value: "200020745365"

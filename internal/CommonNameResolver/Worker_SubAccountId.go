@@ -15,24 +15,25 @@ const (
 	userCountPerRequest = 100
 )
 
-func NewWorker_SubAccountId(client *tke.Client) *Worker_SubAccountId {
+func NewWorker_SubAccountId(client *tke.Client, clusterId string) *Worker_SubAccountId {
 	return &Worker_SubAccountId{
-		client: client,
+		client:    client,
+		clusterId: clusterId,
 	}
 }
 
 func (worker *Worker_SubAccountId) ValueType() string {
-	return "SubAccountId"
+	return "subAccountId"
 }
 
 func (worker *Worker_SubAccountId) ResolveCommonNames(users []*internal.User) error {
-	for i := 0; i < len(users)/userCountPerRequest; i++ {
+	for i := 0; i < len(users)/userCountPerRequest+1; i++ {
 		start := i * userCountPerRequest
 		end := funk.MinInt([]int{(i + 1) * userCountPerRequest, len(users)})
 		length := end - start
 
 		// fill accountIds array for request
-		subAccountIds := make([]string, length)
+		subAccountIds := make([]string, 0)
 		for _, user := range users[start:end] {
 			subAccountIds = append(subAccountIds, user.Value)
 		}
@@ -45,7 +46,7 @@ func (worker *Worker_SubAccountId) ResolveCommonNames(users []*internal.User) er
 
 		// convert user's subAccountId to CommonName
 		for j := 0; j < length; j++ {
-			users[start+j].Value = CNs[j]
+			(*users[start+j]).Value = CNs[j]
 		}
 	}
 

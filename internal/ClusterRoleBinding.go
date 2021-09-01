@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"github.com/thoas/go-funk"
 	v14 "k8s.io/api/rbac/v1"
 	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -16,8 +15,8 @@ import (
 
 type TKEAuthClusterRoleBindings struct {
 	Informer v1.ClusterRoleBindingInformer
-	Lister v12.ClusterRoleBindingLister
-	Synced cache.InformerSynced
+	Lister   v12.ClusterRoleBindingLister
+	Synced   cache.InformerSynced
 
 	crbIface v13.ClusterRoleBindingInterface
 
@@ -25,7 +24,7 @@ type TKEAuthClusterRoleBindings struct {
 }
 
 const (
-	AnnotationKeyManagedTKEAuthCRB = "tke-auth/managed-by"
+	AnnotationKeyManagedTKEAuthCRB   = "tke-auth/managed-by"
 	AnnotationValueManagedTKEAuthCRB = "tke-auth"
 )
 
@@ -35,7 +34,7 @@ func NewTKEAuthClusterRoleBinding(informer v1.ClusterRoleBindingInformer, lister
 		Lister:   lister,
 		Synced:   informer.Informer().HasSynced,
 		crbIface: crbIface,
-		stopCh: stopCh,
+		stopCh:   stopCh,
 	}
 
 	return crb
@@ -49,24 +48,80 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs 
 		return err
 	}
 
-	deletions, _ := funk.Difference(oldCRBs, newCRBs)
-	additions, _ := funk.Difference(newCRBs, oldCRBs)
-	updates := funk.Join(newCRBs, oldCRBs, funk.InnerJoin)
+	deletions := difference(oldCRBs, newCRBs)
+	additions := difference(newCRBs, oldCRBs)
+	updates := intersection(oldCRBs, newCRBs)
 
-	err = TKEAuthCRB.deleteCRBs(deletions.([]*v14.ClusterRoleBinding))
+	err = TKEAuthCRB.deleteCRBs(deletions)
 	if err != nil {
 		return err
 	}
-	err = TKEAuthCRB.addCRBs(additions.([]*v14.ClusterRoleBinding))
+	err = TKEAuthCRB.addCRBs(additions)
 	if err != nil {
 		return err
 	}
-	err = TKEAuthCRB.updateCRBs(updates.([]*v14.ClusterRoleBinding))
+	err = TKEAuthCRB.updateCRBs(updates)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// difference returns A - B in set, key is Name
+func difference(a, b []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
+	aSet := make(map[string]*v14.ClusterRoleBinding)
+	bSet := make(map[string]*v14.ClusterRoleBinding)
+
+	for _, crb := range a {
+		aSet[crb.Name] = crb
+	}
+
+	for _, crb := range b {
+		bSet[crb.Name] = crb
+	}
+
+	for key, _ := range bSet {
+		if _, ok := aSet[key]; ok {
+			delete(aSet, key)
+		}
+	}
+
+	arr := arrayToMap(aSet)
+	return arr
+}
+
+// intersection returns AnB in set, key is Name, uses b's value for array
+func intersection(a, b []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
+	aSet := make(map[string]*v14.ClusterRoleBinding)
+	bSet := make(map[string]*v14.ClusterRoleBinding)
+
+	for _, crb := range a {
+		aSet[crb.Name] = crb
+	}
+
+	for _, crb := range b {
+		bSet[crb.Name] = crb
+	}
+
+	for key, _ := range bSet {
+		if _, ok := aSet[key]; !ok {
+			delete(bSet, key)
+		}
+	}
+
+	arr := arrayToMap(bSet)
+	return arr
+}
+
+func arrayToMap(m map[string]*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
+	arr := make([]*v14.ClusterRoleBinding, 0)
+
+	for _, val := range m {
+		arr = append(arr, val)
+	}
+
+	return arr
 }
 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
@@ -85,7 +140,6 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBin
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) updateCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
-		checkClusterRoleBindingIsManaged(crb)
 		_, err := crbIface.Update(context.TODO(), crb, v15.UpdateOptions{})
 		if err != nil {
 			return err
