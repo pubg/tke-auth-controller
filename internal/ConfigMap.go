@@ -40,6 +40,10 @@ func ToTKEAuth(cfgMap *v12.ConfigMap) (*TKEAuth, error) {
 	bindingName := cfgMap.Data[DataKeyBindingName]
 	roleName := cfgMap.Data[DataKeyRoleName]
 
+	type Users struct {
+		Users []string `yaml:"users"`
+	}
+
 	usersStr := cfgMap.Data[DataKeyUsers]
 	users := make([]string, 0)
 	err := yaml.Unmarshal([]byte(usersStr), users)

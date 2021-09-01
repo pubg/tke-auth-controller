@@ -2,6 +2,7 @@ package main
 
 import (
 	"example.com/tke-auth-controller/internal"
+	"example.com/tke-auth-controller/internal/CommonNameResolver"
 	"fmt"
 	"github.com/pkg/errors"
 	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
@@ -41,9 +42,11 @@ type Controller struct {
 
 	clusterId string
 	tkeClient *tke.Client
+
+	commonNameResolver *CommonNameResolver.CommonNameResolver
 }
 
-func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string) (*Controller, error) {
+func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string, CNResolver *CommonNameResolver.CommonNameResolver) (*Controller, error) {
 	ctl := &Controller{
 		kubeClient:                     kubeClient,
 		tkeAuthConfigMap:               tkeAuthCfg,
@@ -51,6 +54,7 @@ func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuth
 		syncAllClusterRoleBindingTimer: nil,
 		tkeClient:                      tkeClient,
 		clusterId:                      clusterId,
+		commonNameResolver:             CNResolver,
 	}
 
 	ctl.tkeAuthConfigMap.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -141,12 +145,10 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 
 	// 3. convert subAccountId to CommonNames
 	for _, tkeAuth := range tkeAuths {
-		subAccountIds := tkeAuth.Users
-		commonNames, err := internal.ConvertSubAccountIdToCommonNames(ctl.tkeClient, ctl.clusterId, subAccountIds)
+		err := ctl.commonNameResolver.ResolveCommonNames(tkeAuth.Users)
 		if err != nil {
 			klog.Error(err)
-		} else {
-			tkeAuth.Users = commonNames
+			return
 		}
 	}
 

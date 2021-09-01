@@ -2,6 +2,7 @@ package main
 
 import (
 	"example.com/tke-auth-controller/internal"
+	"example.com/tke-auth-controller/internal/CommonNameResolver"
 	"example.com/tke-auth-controller/internal/signals"
 	"flag"
 	"k8s.io/client-go/informers"
@@ -55,8 +56,12 @@ func main() {
 	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	tkeAuthCfg := internal.NewTKEAuthConfigMaps(informerFactory.Core().V1().ConfigMaps(), informerFactory.Core().V1().ConfigMaps().Lister())
 	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
+	commonNameResolver := CommonNameResolver.NewCommonNameResolver()
 
-	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId)
+	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient)
+	commonNameResolver.AddWorker(subAccountIdResolveWorker)
+
+	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver)
 	if err != nil {
 		log.Fatalf("cannot create controller: %s", err.Error())
 	}

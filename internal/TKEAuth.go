@@ -6,10 +6,15 @@ import (
 	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type User struct {
+	ValueType string `yaml:"type"`
+	Value string `yaml:"value"`
+}
+
 type TKEAuth struct {
 	BindingName string   `yaml:"bindingName"`
 	RoleName    string   `yaml:"roleName"`
-	Users       []string `yaml:"users"`
+	Users       []User `yaml:"users"`
 }
 
 func (t *TKEAuth) ToClusterRoleBinding() *v1.ClusterRoleBinding {
