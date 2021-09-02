@@ -1,4 +1,4 @@
-FROM golang:1.7rc6-alpine as BUILD
+FROM golang:1.17-alpine3.13 as BUILD
 
 WORKDIR /root
 
@@ -6,9 +6,9 @@ RUN apk add --no-cache git
 
 COPY . .
 
-RUN go get
+RUN go mod download
 
-RUN GOOS=linux GOARCH=386 go build -o tke-auth-controller
+RUN GOOS=linux GOARCH=amd64 go build -o tke-auth-controller
 
 FROM ubuntu:focal
 
