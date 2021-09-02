@@ -43,7 +43,7 @@ func init() {
 	}
 
 	if regionName == "" {
-		log.Println("required attribute: clusterName is empty.")
+		log.Println("required attribute: regionName is empty.")
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
