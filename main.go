@@ -20,12 +20,12 @@ import (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
-	regionName string
+	masterURL   string
+	kubeconfig  string
+	regionName  string
 	clusterName string
-	clusterId  string
-	tkeClient *v20180525.Client
+	clusterId   string
+	tkeClient   *v20180525.Client
 )
 
 func init() {
@@ -39,12 +39,14 @@ func init() {
 	if clusterName == "" && clusterId == "" {
 		log.Println("both clusterName and clusterId is empty, you should provide at least one value.")
 		flag.PrintDefaults()
+		log.Printf("received arguments: %s\n", os.Args)
 		os.Exit(1)
 	}
 
 	if regionName == "" {
 		log.Println("required attribute: regionName is empty.")
 		flag.PrintDefaults()
+		log.Printf("received arguments: %s\n", os.Args)
 		os.Exit(1)
 	}
 
