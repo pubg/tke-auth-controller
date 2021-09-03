@@ -23,4 +23,4 @@ RUN chmod 777 /home/controller/tke-auth-controller && chown controller:controlle
 # prevent executable grant previlege
 USER controller
 
-ENTRYPOINT /home/controller/tke-auth-controller
+ENTRYPOINT ["/home/controller/tke-auth-controller"]
