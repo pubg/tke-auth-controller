@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o tke-auth-controller
 FROM ubuntu:focal
 
 # tencent client requires curl to run
-RUN apt-get update -y && apt-get install -y curl
+RUN apt-get update -y && apt-get install -y ca-certificates
 RUN useradd -ms /bin/bash controller
 
 COPY --from=BUILD /root/tke-auth-controller /home/controller/tke-auth-controller
