@@ -1,0 +1,58 @@
+name: "build tke-auth-controller"
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+env:
+  TAG_NAME: aws-bpf
+  WORKDIR: aws-bpf
+jobs:
+  build_image:
+    name: build docker image using Dockerfile
+    runs-on: ["self-hosted", "Linux", "DevOps"]
+    steps:
+      - uses: actions/setup-node@v2
+      - name: setup libraries
+        shell: bash
+        run: |
+          yarn global add semver
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # to fetch all tags
+      - name: get semver
+        id: semver
+        shell: bash
+        run: |
+          current_tag=$(git describe --tags --abbrev=0)
+          echo "current_tag: $current_tag"
+          semver=$(semver "$current_tag")
+          echo "extracted semver: $semver"
+          echo "::set-output name=SEMVER::$semver"
+      - name: login to dockerhub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: build and push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: "zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}"
+          secrets: |
+            GIT_AUTH_TOKEN=${{ secrets.GITHUBTOKEN }}
+      - name: slack-notify
+        uses: 8398a7/action-slack@v3.9.1
+        with:
+          github_base_url: https://github.krafton.com
+          status: custom
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+          custom_payload: |
+            {
+              attachments: [{
+                color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+                text: `commit: ${ process.env.AS_REPO }@${ process.env.AS_COMMIT }\nauthor: ${ process.env.AS_AUTHOR }\nmessage: ${ process.env.AS_MESSAGE }\naction: ${ process.env.AS_ACTION }`
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.PLATFORM_SLACK_WEBHOOK_URL }}
+        if: always()
