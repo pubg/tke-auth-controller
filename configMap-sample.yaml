@@ -12,3 +12,5 @@ data:
     users:
       - type: subAccountId
         value: "200020745365"
+      - type: subAccountId
+        value: "200020433621"
