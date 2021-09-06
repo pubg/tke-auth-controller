@@ -36,12 +36,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: build and push
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: "zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}"
-          secrets: |
-            GIT_AUTH_TOKEN=${{ secrets.GITHUBTOKEN }}
+        shell: bash
+        run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+          docker build . --tag "zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}"
+          docker push zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}
       - name: slack-notify
         uses: 8398a7/action-slack@v3.9.1
         with:
