@@ -19,8 +19,8 @@ jobs:
       - name: setup libraries
         shell: bash
         run: |
-          npm i -g yarn
-          yarn global add semver
+          sudo npm i -g yarn
+          sudo yarn global add semver
       - name: get semver
         id: semver
         shell: bash
