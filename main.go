@@ -25,6 +25,7 @@ var (
 	regionName  string
 	clusterName string
 	clusterId   string
+	reSyncInterval int
 	tkeClient   *v20180525.Client
 )
 
@@ -34,6 +35,7 @@ func init() {
 	flag.StringVar(&regionName, "regionName", "", "region Name. eg: ap-seoul")
 	flag.StringVar(&clusterName, "clusterName", "", "name of cluster.")
 	flag.StringVar(&clusterId, "clusterId", "", "cluster Id of target.")
+	flag.IntVar(&reSyncInterval, "reSyncInterval", 60 * 5, "interval (second) to reSync event trigger. does not effect reSync on configMap changes.")
 	flag.Parse()
 
 	if clusterName == "" && clusterId == "" {
@@ -111,7 +113,7 @@ func main() {
 	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient, clusterId)
 	commonNameResolver.AddWorker(subAccountIdResolveWorker)
 
-	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver)
+	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver, reSyncInterval)
 	if err != nil {
 		log.Fatalf("cannot create controller: %s", err.Error())
 	}

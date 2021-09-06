@@ -44,9 +44,11 @@ type Controller struct {
 	tkeClient *tke.Client
 
 	commonNameResolver *CommonNameResolver.CommonNameResolver
+
+	reSyncInterval int
 }
 
-func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string, CNResolver *CommonNameResolver.CommonNameResolver) (*Controller, error) {
+func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string, CNResolver *CommonNameResolver.CommonNameResolver, reSyncInterval int) (*Controller, error) {
 	ctl := &Controller{
 		kubeClient:                     kubeClient,
 		tkeAuthConfigMap:               tkeAuthCfg,
@@ -55,6 +57,7 @@ func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuth
 		tkeClient:                      tkeClient,
 		clusterId:                      clusterId,
 		commonNameResolver:             CNResolver,
+		reSyncInterval:                 reSyncInterval,
 	}
 
 	ctl.tkeAuthConfigMap.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -128,6 +131,7 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	if err != nil {
 		klog.Error(errors.Wrap(err, "Cannot get AuthConfigMaps from cluster"))
 	}
+	klog.Infof("got %d configMaps.\n", len(cfgMaps))
 
 	// 2. convert to tkeAuth
 	tkeAuths := make([]*internal.TKEAuth, 0)
@@ -140,6 +144,7 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 			tkeAuths = append(tkeAuths, tkeAuth)
 		}
 	}
+	klog.Infof("converted")
 
 	// 3. convert subAccountId to CommonNames
 	for _, tkeAuth := range tkeAuths {
@@ -164,6 +169,18 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	}
 }
 
+func (ctl *Controller) triggerReSyncOnInterval(trigger <-chan time.Time, stopCh <-chan struct{}) {
+	for {
+		select {
+		case <-trigger:
+			ctl.reserveReSyncTimer()
+			break
+		case <-stopCh:
+			return
+		}
+	}
+}
+
 func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 
@@ -174,8 +191,13 @@ func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 		return fmt.Errorf("Failed to wait for caches to sync.\n")
 	}
 
+	log.Printf("Setup reSync callback. period: %d\n", ctl.reSyncInterval)
+	ticker := time.NewTicker(time.Second * time.Duration(ctl.reSyncInterval))
+	ctl.triggerReSyncOnInterval(ticker.C, stopCh)
+
 	log.Println("Controller running...")
 	<-stopCh
+	ticker.Stop()
 	log.Println("Controller stopped.")
 
 	return nil
