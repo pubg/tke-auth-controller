@@ -52,6 +52,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs 
 	deletions := difference(oldCRBs, newCRBs)
 	additions := difference(newCRBs, oldCRBs)
 	updates := getUpdates(newCRBs, oldCRBs)
+	klog.Infof("crb changed. add: %d, update: %d, delete: %d\n", len(additions), len(updates), len(deletions))
 
 	err = TKEAuthCRB.deleteCRBs(deletions)
 	if err != nil {

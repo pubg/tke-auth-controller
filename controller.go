@@ -76,9 +76,12 @@ func (ctl *Controller) onConfigMapAdded(new interface{}) {
 		return
 	}
 
-	if v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		ctl.reserveReSyncTimer()
+	if !v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
+		return
 	}
+
+	ctl.reserveReSyncTimer()
+	klog.Infof("received configMap added event, name: %s\n", configMap.Name)
 }
 
 func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
@@ -94,13 +97,17 @@ func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
 		return
 	}
 
-	if v12.HasAnnotation(oldConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		ctl.reserveReSyncTimer()
+	oldCfgMapIsManaged := v12.HasAnnotation(oldConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap)
+	newCfgMapIsManaged := v12.HasAnnotation(newConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap)
+
+	if !oldCfgMapIsManaged && !newCfgMapIsManaged {
+		return
+	} else if oldCfgMapIsManaged && !newCfgMapIsManaged {
+		klog.Warningf("configMap %s has annotation \"managed-by\" before, but is deleted.\n", newConfigMap.Name)
 	}
 
-	if v12.HasAnnotation(newConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		ctl.reserveReSyncTimer()
-	}
+	ctl.reserveReSyncTimer()
+	klog.Infof("received configMap changed event, name: %s\n", newConfigMap.Name)
 }
 
 func (ctl *Controller) onConfigMapDeleted(old interface{}) {
@@ -110,10 +117,12 @@ func (ctl *Controller) onConfigMapDeleted(old interface{}) {
 		return
 	}
 
-	if v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
-		klog.Infof("configMap %s has annotation %s.\n", configMap.Name, AnnotationKeyTKEAuthConfigMap)
-		ctl.reserveReSyncTimer()
+	if !v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
+		return
 	}
+
+	ctl.reserveReSyncTimer()
+	klog.Infof("received configMap deleted event, name: %s\n", configMap.Name)
 }
 
 func (ctl *Controller) reserveReSyncTimer() {
@@ -144,7 +153,6 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 			tkeAuths = append(tkeAuths, tkeAuth)
 		}
 	}
-	klog.Infof("converted")
 
 	// 3. convert subAccountId to CommonNames
 	for _, tkeAuth := range tkeAuths {
@@ -167,6 +175,8 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	if err != nil {
 		klog.Error(err)
 	}
+
+	klog.Infoln("ClusterRoleBindings updated.")
 }
 
 func (ctl *Controller) triggerReSyncOnInterval(trigger <-chan time.Time, stopCh <-chan struct{}) {
