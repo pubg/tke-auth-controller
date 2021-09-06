@@ -103,8 +103,8 @@ func getUpdates(new, old []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
 
 	updates := make([]*v14.ClusterRoleBinding, 0)
 
-	for _, oldCrb := range old {
-		newCrb, ok := oldSet[oldCrb.Name]
+	for _, newCrb := range new {
+		oldCrb, ok := oldSet[newCrb.Name]
 
 		if ok {
 			oldCrbCopy := oldCrb.DeepCopy()
