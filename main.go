@@ -123,7 +123,7 @@ func main() {
 		log.Fatalf("cannot create kubeClient: %s", err.Error())
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*10)
 	tkeAuthCfg := internal.NewTKEAuthConfigMaps(informerFactory.Core().V1().ConfigMaps(), informerFactory.Core().V1().ConfigMaps().Lister())
 	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
 	commonNameResolver := CommonNameResolver.NewCommonNameResolver()
