@@ -3,9 +3,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-env:
-  TAG_NAME: aws-bpf
-  WORKDIR: aws-bpf
 jobs:
   build_image:
     name: build docker image using Dockerfile
@@ -14,10 +11,19 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0 # to fetch all tags
-      - uses: actions/setup-node@v2.4.0
+      - name: setup node 16.x # setup-node@v2 can't used on enterprise github.
+        shell: bash
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+
+          # Using Debian, as root
+          curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+          apt-get install -y nodejs
       - name: setup libraries
         shell: bash
         run: |
+          npm i -g yarn
           yarn global add semver
       - name: get semver
         id: semver
