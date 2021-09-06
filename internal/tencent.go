@@ -2,11 +2,14 @@ package internal
 
 import (
 	"encoding/json"
+	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
 	"os"
 	"path"
+	"strconv"
+	"time"
 )
 
 type TencentIntlProfileProvider struct{}
@@ -33,7 +36,7 @@ func (t TencentIntlProfileProvider) GetCredential() (common.CredentialIface, err
 	}, nil
 }
 
-func NewClient(region string) (*tke.Client, error) {
+func NewTKEClient(region string) (*tke.Client, error) {
 	credProviders := common.NewProviderChain([]common.Provider{common.DefaultEnvProvider(), common.DefaultProfileProvider(), common.DefaultCvmRoleProvider(), TencentIntlProfileProvider{}})
 	cred, err := credProviders.GetCredential()
 	if err != nil {
@@ -47,6 +50,25 @@ func NewClient(region string) (*tke.Client, error) {
 
 	return client, nil
 }
+
+func NewCAMClient(region string) (*cam.Client, error) {
+	credProviders := common.NewProviderChain([]common.Provider{common.DefaultEnvProvider(), common.DefaultProfileProvider(), common.DefaultCvmRoleProvider(), TencentIntlProfileProvider{}})
+	cred, err := credProviders.GetCredential()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := cam.NewClient(cred, region, profile.NewClientProfile())
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+const (
+	SubAccountIdConversionUserCountPerRequest = 100
+)
 
 func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string) ([]string, error) {
 	// according to document, maximum subAccount per request is 50
@@ -77,6 +99,37 @@ func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subA
 	}
 
 	return CNs, nil
+}
+
+func GetSubAccountIdOfUserName(client *cam.Client, clusterId string, userId string) (*string, error) {
+	req := cam.NewGetUserRequest()
+	req.Name = &userId
+
+	res, err := client.GetUser(req)
+	if err != nil {
+		return nil, err
+	}
+
+	str := strconv.FormatUint(*res.Response.Uin, 10)
+
+	return &str, nil
+}
+
+func GetSubAccountIdOfUserNames(client *cam.Client, clusterId string, userNames []string, requestPerSecond int) ([]string, error) {
+	users := make([]string, 0)
+
+	for _, name := range userNames {
+		userId, err := GetSubAccountIdOfUserName(client, clusterId, name)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, *userId)
+
+		time.Sleep(time.Second / time.Duration(requestPerSecond))
+	}
+
+	return users, nil
 }
 
 func min(a, b int) int {

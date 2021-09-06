@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.0.244
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.238
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke v1.0.238
 	github.com/thoas/go-funk v0.9.0

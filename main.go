@@ -7,6 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pkg/errors"
+	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
+	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/regions"
 	v20180525 "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -20,13 +22,15 @@ import (
 )
 
 var (
-	masterURL   string
-	kubeconfig  string
-	regionName  string
-	clusterName string
-	clusterId   string
-	reSyncInterval int
-	tkeClient   *v20180525.Client
+	masterURL                   string
+	kubeconfig                  string
+	regionName                  string
+	clusterName                 string
+	clusterId                   string
+	reSyncInterval              int
+	userToEmailRequestPerSecond int
+	tkeClient                   *v20180525.Client
+	camClient                   *cam.Client
 )
 
 func init() {
@@ -35,7 +39,8 @@ func init() {
 	flag.StringVar(&regionName, "regionName", "", "region Name. eg: ap-seoul")
 	flag.StringVar(&clusterName, "clusterName", "", "name of cluster.")
 	flag.StringVar(&clusterId, "clusterId", "", "cluster Id of target.")
-	flag.IntVar(&reSyncInterval, "reSyncInterval", 60 * 5, "interval (second) to reSync event trigger. does not effect reSync on configMap changes.")
+	flag.IntVar(&reSyncInterval, "reSyncInterval", 60*5, "interval (second) to reSync event trigger. does not effect reSync on configMap changes.")
+	flag.IntVar(&userToEmailRequestPerSecond, "userToEmailReqPerSec", 5, "user to email request per second. high value might exceed API Call limit.")
 	flag.Parse()
 
 	if clusterName == "" && clusterId == "" {
@@ -58,8 +63,21 @@ func init() {
 func setupTKEClient() {
 	log.Printf("current region: %s, cluster name: %s\n", regionName, clusterName)
 
+	if !isValidRegionName(regionName) {
+		log.Fatalf("region: %s is not a valid regionName.\n", regionName)
+	}
+
+	if regionName == "" {
+		log.Fatalln("regionName is empty. you should provide valid region name.")
+	}
+
 	var err error
-	tkeClient, err = internal.NewClient(regionName)
+	tkeClient, err = internal.NewTKEClient(regionName)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	camClient, err = internal.NewCAMClient(regionName)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -112,6 +130,8 @@ func main() {
 
 	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient, clusterId)
 	commonNameResolver.AddWorker(subAccountIdResolveWorker)
+	emailResolveWorker := CommonNameResolver.NewWorker_Email(camClient, tkeClient, clusterId, userToEmailRequestPerSecond)
+	commonNameResolver.AddWorker(emailResolveWorker)
 
 	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver, reSyncInterval)
 	if err != nil {
@@ -158,4 +178,51 @@ func getOutClusterConfig() (*rest.Config, error) {
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeConfigPath)
 
 	return cfg, err
+}
+
+func isValidRegionName(regionName string) bool {
+	switch regionName {
+	case regions.Bangkok:
+		return true
+	case regions.Beijing:
+		return true
+	case regions.Chengdu:
+		return true
+	case regions.Chongqing:
+		return true
+	case regions.Guangzhou:
+		return true
+	case regions.GuangzhouOpen:
+		return true
+	case regions.HongKong:
+		return true
+	case regions.Mumbai:
+		return true
+	case regions.Seoul:
+		return true
+	case regions.Shanghai:
+		return true
+	case regions.Nanjing:
+		return true
+	case regions.ShanghaiFSI:
+		return true
+	case regions.ShenzhenFSI:
+		return true
+	case regions.Singapore:
+		return true
+	case regions.Tokyo:
+		return true
+	case regions.Frankfurt:
+		return true
+	case regions.Moscow:
+		return true
+	case regions.Ashburn:
+		return true
+	case regions.SiliconValley:
+		return true
+	case regions.Toronto:
+		return true
+	}
+
+	return false
 }
