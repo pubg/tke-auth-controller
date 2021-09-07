@@ -29,7 +29,7 @@ import (
 */
 
 const (
-	reSyncWaitTimeout             = time.Millisecond * 500
+	reSyncWaitTimeout = time.Millisecond * 500
 )
 
 type Controller struct {
@@ -170,9 +170,9 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	err = ctl.tkeAuthClusterRoleBindings.UpsertClusterRoleBindings(TKEAuthCRBs)
 	if err != nil {
 		klog.Error(err)
+	} else {
+		klog.Infoln("ClusterRoleBindings updated.")
 	}
-
-	klog.Infoln("ClusterRoleBindings updated.")
 }
 
 func (ctl *Controller) Run(stopCh <-chan struct{}) error {

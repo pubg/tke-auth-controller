@@ -42,7 +42,7 @@ func (worker *Worker_Email) ResolveCommonNames(users []*internal.User) error {
 		}
 
 		// convert names to subAccountIds for request
-		subAccountIds, errs := internal.GetSubAccountIdOfUserNames(worker.camClient, worker.clusterId, names, worker.userToRequestPerSecond)
+		subAccountIds, errs := internal.GetSubAccountIdOfUserIds(worker.camClient, worker.clusterId, names, worker.userToRequestPerSecond)
 		if len(errs) > 0 {
 			klog.Warningf("could not get subAccountId from email, ignoring. error: %s\n", errs)
 		}

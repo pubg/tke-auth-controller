@@ -71,6 +71,8 @@ const (
 	SubAccountIdConversionUserCountPerRequest = 100
 )
 
+// ConvertSubAccountIdToCommonNames accepts subAccountId array, returns same length of commonName array
+// the value of index is empty string if somehow the request is failed.
 func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string) ([]string, []error) {
 	// according to document, maximum subAccount per request is 50
 	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
@@ -93,9 +95,13 @@ func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subA
 		res, err := client.DescribeClusterCommonNames(req)
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "could not get commonNames."))
-		} else {
-			for _, commonName := range res.Response.CommonNames {
-				CNs = append(CNs, *commonName.CN)
+		}
+
+		for j := 0; j < len(req.SubaccountUins); j++ {
+			if err == nil {
+				CNs = append(CNs, *res.Response.CommonNames[j].CN)
+			} else {
+				CNs = append(CNs, "")
 			}
 		}
 	}
@@ -117,17 +123,20 @@ func GetSubAccountIdOfUserName(client *cam.Client, clusterId string, userId stri
 	return &str, nil
 }
 
-func GetSubAccountIdOfUserNames(client *cam.Client, clusterId string, userNames []string, requestPerSecond int) ([]string, []error) {
+// GetSubAccountIdOfUserIds accepts userId array, returns subAccountId array
+// if request fails, the value of index will be replaced to empty string.
+func GetSubAccountIdOfUserIds(client *cam.Client, clusterId string, userIds []string, requestPerSecond int) ([]string, []error) {
 	users := make([]string, 0)
 	errs := make([]error, 0)
 
-	for _, name := range userNames {
+	for _, name := range userIds {
 		userId, err := GetSubAccountIdOfUserName(client, clusterId, name)
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "could not get user info, userId: %s\n", *userId))
+			errs = append(errs, errors.Wrapf(err, "could not get user info, userId: %s\n", name))
+			users = append(users, "") // we should provide empty string to make a same length array.
+		} else {
+			users = append(users, *userId)
 		}
-
-		users = append(users, *userId)
 
 		time.Sleep(time.Second / time.Duration(requestPerSecond))
 	}
