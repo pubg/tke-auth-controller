@@ -72,7 +72,7 @@ const (
 )
 
 // ConvertSubAccountIdToCommonNames accepts subAccountId array, returns same length of commonName array
-// the value of index is empty string if somehow the request is failed.
+// the value of index is original subAccountId if somehow the request is failed.
 func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string, apiCallPerSecond int) ([]string, []error) {
 	CNs := make([]string, 0)
 	errs := make([]error, 0)
@@ -87,7 +87,7 @@ func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subA
 		res, err := client.DescribeClusterCommonNames(req)
 		if err != nil || res.Response == nil || len(res.Response.CommonNames) == 0 {
 			errs = append(errs, err, errors.Wrapf(err, "could not get commonName, subAccountId: %s\n", id))
-			CNs = append(CNs, "")
+			CNs = append(CNs, id)
 		} else {
 			CNs = append(CNs, *res.Response.CommonNames[0].CN)
 		}
@@ -122,7 +122,7 @@ func GetSubAccountIdOfUserIds(client *cam.Client, clusterId string, userIds []st
 		userId, err := GetSubAccountIdOfUserName(client, clusterId, name)
 		if err != nil {
 			errs = append(errs, errors.Wrapf(err, "could not get user info, userId: %s\n", name))
-			users = append(users, "") // we should provide empty string to make a same length array.
+			users = append(users, name) // give original name if request failed. (empty string is not allowed, k8s will throw error)
 		} else {
 			users = append(users, *userId)
 		}
