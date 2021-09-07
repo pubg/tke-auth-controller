@@ -2,7 +2,8 @@ package internal
 
 import (
 	"context"
-	"fmt"
+	"example.com/tke-auth-controller/log"
+	"github.com/thoas/go-funk"
 	v14 "k8s.io/api/rbac/v1"
 	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -11,7 +12,7 @@ import (
 	v12 "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"log"
+	"strings"
 )
 
 type TKEAuthClusterRoleBindings struct {
@@ -52,7 +53,19 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) UpsertClusterRoleBindings(newCRBs 
 	deletions := difference(oldCRBs, newCRBs)
 	additions := difference(newCRBs, oldCRBs)
 	updates := getUpdates(newCRBs, oldCRBs)
-	klog.Infof("crb changed. add: %d, update: %d, delete: %d\n", len(additions), len(updates), len(deletions))
+	klog.Infof("CRB changed. add: %d, update: %d, delete: %d\n", len(additions), len(updates), len(deletions))
+
+	// print add
+	klog.Infof("added CRBs: %s\n", strings.Join(funk.Map(additions, func(crb *v14.ClusterRoleBinding) string { return crb.Name }).([]string), ", "))
+
+	// print update
+	klog.Infof("updated CRBs: %s\n", strings.Join(funk.Map(updates, func(crb *v14.ClusterRoleBinding) string { return crb.Name }).([]string), ", "))
+
+	// print delete
+	klog.Infof("deleted CRBs: %s\n", strings.Join(funk.Map(deletions, func(crb *v14.ClusterRoleBinding) string { return crb.Name }).([]string), ", "))
+
+	// total
+	klog.Infof("total CRBs: %d\n", len(additions)+len(updates)+len(deletions))
 
 	err = TKEAuthCRB.deleteCRBs(deletions)
 	if err != nil {
@@ -117,6 +130,7 @@ func getUpdates(new, old []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
 
 	return updates
 }
+
 // intersection returns AnB in set, key is Name, uses b's value for array
 func intersection(a, b []*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding {
 	aSet := make(map[string]*v14.ClusterRoleBinding)
@@ -153,7 +167,7 @@ func arrayToMap(m map[string]*v14.ClusterRoleBinding) []*v14.ClusterRoleBinding 
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) addCRBs(CRBs []*v14.ClusterRoleBinding) error {
 	crbIface := TKEAuthCRB.crbIface
 	for _, crb := range CRBs {
- 		crb.Annotations[AnnotationKeyManagedTKEAuthCRB] = AnnotationValueManagedTKEAuthCRB
+		crb.Annotations[AnnotationKeyManagedTKEAuthCRB] = AnnotationValueManagedTKEAuthCRB
 		_, err := crbIface.Create(context.TODO(), crb, v15.CreateOptions{})
 		if err != nil {
 			return err
@@ -191,7 +205,7 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) deleteCRBs(CRBs []*v14.ClusterRole
 // check clusterRoleBinding has managed annotation, throws panic if not.
 func checkClusterRoleBindingIsManaged(crb *v14.ClusterRoleBinding) {
 	if _, ok := crb.Annotations[AnnotationKeyManagedTKEAuthCRB]; !ok {
-		log.Panicf("tried to modify ClusterRoleBinding name: %s but it's not managed by TKE-Auth controller.\n", crb.Name)
+		klog.Errorf("tried to modify ClusterRoleBinding name: %s but it's not managed by TKE-Auth controller.\n", crb.Name)
 	}
 }
 
@@ -217,9 +231,9 @@ func (TKEAuthCRB *TKEAuthClusterRoleBindings) getClusterRoleBindings() ([]*v14.C
 func (TKEAuthCRB *TKEAuthClusterRoleBindings) waitUntilCacheSync() {
 	retryCount := 0
 	for {
-		klog.Infoln(fmt.Sprintf("Waiting TKEAuthClusterRoleBindings cache to be synced... retryCount: %d", retryCount))
+		klog.V(log.VerboseLevel).Infof("Waiting TKEAuthClusterRoleBindings cache to be synced... retryCount: %d", retryCount)
 		if cache.WaitForCacheSync(TKEAuthCRB.stopCh, TKEAuthCRB.Synced) {
-			klog.Infoln("TKEAuthClusterRoleBindings cache synced.")
+			klog.V(log.VerboseLevel).Infoln("TKEAuthClusterRoleBindings cache synced.")
 			break
 		} else {
 			retryCount += 1

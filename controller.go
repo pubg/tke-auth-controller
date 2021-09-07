@@ -3,6 +3,7 @@ package main
 import (
 	"example.com/tke-auth-controller/internal"
 	"example.com/tke-auth-controller/internal/CommonNameResolver"
+	log "example.com/tke-auth-controller/log"
 	"fmt"
 	"github.com/pkg/errors"
 	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"log"
 	"time"
 )
 
@@ -30,7 +30,7 @@ import (
 
 const (
 	AnnotationKeyTKEAuthConfigMap = "tke-auth/binding-user-data"
-	resyncWaitTimeout             = time.Second * 1
+	reSyncWaitTimeout             = time.Second * 5
 )
 
 type Controller struct {
@@ -81,7 +81,7 @@ func (ctl *Controller) onConfigMapAdded(new interface{}) {
 	}
 
 	ctl.reserveReSyncTimer()
-	klog.Infof("received configMap added event, name: %s\n", configMap.Name)
+	klog.V(log.VerboseLevel).Infof("received configMap added event, name: %s\n", configMap.Name)
 }
 
 func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
@@ -107,7 +107,7 @@ func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
 	}
 
 	ctl.reserveReSyncTimer()
-	klog.Infof("received configMap changed event, name: %s\n", newConfigMap.Name)
+	klog.V(log.VerboseLevel).Infof("received configMap changed event, name: %s\n", newConfigMap.Name)
 }
 
 func (ctl *Controller) onConfigMapDeleted(old interface{}) {
@@ -122,15 +122,15 @@ func (ctl *Controller) onConfigMapDeleted(old interface{}) {
 	}
 
 	ctl.reserveReSyncTimer()
-	klog.Infof("received configMap deleted event, name: %s\n", configMap.Name)
+	klog.V(log.VerboseLevel).Infof("received configMap deleted event, name: %s\n", configMap.Name)
 }
 
 func (ctl *Controller) reserveReSyncTimer() {
 	timer := &ctl.syncAllClusterRoleBindingTimer
 	if ctl.syncAllClusterRoleBindingTimer != nil {
-		(*timer).Reset(resyncWaitTimeout)
+		(*timer).Reset(reSyncWaitTimeout)
 	} else {
-		*timer = time.AfterFunc(resyncWaitTimeout, ctl.syncAllClusterRoleBinding)
+		*timer = time.AfterFunc(reSyncWaitTimeout, ctl.syncAllClusterRoleBinding)
 	}
 }
 
@@ -140,7 +140,7 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	if err != nil {
 		klog.Error(errors.Wrap(err, "Cannot get AuthConfigMaps from cluster"))
 	}
-	klog.Infof("got %d configMaps.\n", len(cfgMaps))
+	klog.V(log.VerboseLevel).Infof("got %d configMaps.\n", len(cfgMaps))
 
 	// 2. convert to tkeAuth
 	tkeAuths := make([]*internal.TKEAuth, 0)
@@ -194,21 +194,21 @@ func (ctl *Controller) triggerReSyncOnInterval(trigger <-chan time.Time, stopCh 
 func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 
-	log.Println("Starting Controller.")
+	klog.Infoln("Starting Controller.")
 
-	log.Println("Waiting for informer caches to sync.")
+	klog.V(4).Infoln("Waiting for informer caches to sync.")
 	if ok := cache.WaitForCacheSync(stopCh, ctl.tkeAuthConfigMap.Synced, ctl.tkeAuthClusterRoleBindings.Synced); !ok {
 		return fmt.Errorf("Failed to wait for caches to sync.\n")
 	}
 
-	log.Printf("Setup reSync callback. period: %d\n", ctl.reSyncInterval)
+	klog.Infof("set reSync callback interval to %d second.\n", ctl.reSyncInterval)
 	ticker := time.NewTicker(time.Second * time.Duration(ctl.reSyncInterval))
 	ctl.triggerReSyncOnInterval(ticker.C, stopCh)
 
-	log.Println("Controller running...")
+	klog.Infoln("Controller running...")
 	<-stopCh
 	ticker.Stop()
-	log.Println("Controller stopped.")
+	klog.Infoln("Controller stopped.")
 
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 	"log"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ var (
 )
 
 func init() {
+	klog.InitFlags(nil)
 	flag.StringVar(&masterURL, "masterURL", "", "masterURL of kubernetes cluster.")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path of kubeconfig.")
 	flag.StringVar(&regionName, "regionName", "", "region Name. eg: ap-seoul")
@@ -108,19 +110,19 @@ func setupTKEClient() {
 }
 
 func main() {
-	log.Printf("current os: %s\n", runtime.GOOS)
+	klog.Infof("current os: %s\n", runtime.GOOS)
 
 	// setup for graceful shutdown
 	stopCh := signals.SetupSignalHandler()
 
 	cfg, err := getClusterConfig()
 	if err != nil {
-		log.Fatalf("cannot create kubeconfig, %s", err.Error())
+		klog.Fatalf("cannot create kubeconfig, err: %s", err.Error())
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Fatalf("cannot create kubeClient: %s", err.Error())
+		klog.Fatalf("cannot create kubeClient, err: %s", err.Error())
 	}
 
 	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*10)
@@ -135,16 +137,14 @@ func main() {
 
 	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver, reSyncInterval)
 	if err != nil {
-		log.Fatalf("cannot create controller: %s", err.Error())
+		klog.Fatalf("cannot create controller, err: %s", err.Error())
 	}
 
 	informerFactory.Start(stopCh)
 
 	if err = controller.Run(stopCh); err != nil {
-		log.Fatalf("Error running controller: %s", err.Error())
+		klog.Fatalf("Error running controller, err: %s", err.Error())
 	}
-
-	return
 }
 
 func getClusterConfig() (*rest.Config, error) {
