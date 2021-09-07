@@ -48,7 +48,7 @@ func (worker *Worker_Email) ResolveCommonNames(users []*internal.User) error {
 		}
 
 		// do actual request
-		CNs, err := internal.ConvertSubAccountIdToCommonNames(worker.tkeClient, worker.clusterId, subAccountIds)
+		CNs, err := internal.ConvertSubAccountIdToCommonNames(worker.tkeClient, worker.clusterId, subAccountIds, worker.userToRequestPerSecond)
 		if len(err) > 0 {
 			klog.Warningf("could not get CommonNames from subAccountId, ignoring. error: %s\n", errs)
 		}

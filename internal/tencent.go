@@ -73,37 +73,26 @@ const (
 
 // ConvertSubAccountIdToCommonNames accepts subAccountId array, returns same length of commonName array
 // the value of index is empty string if somehow the request is failed.
-func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string) ([]string, []error) {
-	// according to document, maximum subAccount per request is 50
-	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
-	const maxSubAccountPerReq = 50
-
+func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string, apiCallPerSecond int) ([]string, []error) {
 	CNs := make([]string, 0)
 	errs := make([]error, 0)
 
-	for i := 0; i < len(subAccountIds)/maxSubAccountPerReq+1; i++ {
-		length := min(maxSubAccountPerReq, len(subAccountIds)-i*maxSubAccountPerReq)
-
+	for _, id := range subAccountIds {
 		req := tke.NewDescribeClusterCommonNamesRequest()
 		req.ClusterId = &clusterId
-		req.SubaccountUins = make([]*string, length)
-
-		for j := 0; j < length; j++ {
-			req.SubaccountUins[j] = &subAccountIds[i*maxSubAccountPerReq+j]
+		req.SubaccountUins = []*string{
+			&id,
 		}
 
 		res, err := client.DescribeClusterCommonNames(req)
-		if err != nil {
-			errs = append(errs, errors.Wrap(err, "could not get commonNames."))
+		if err != nil || res.Response == nil || len(res.Response.CommonNames) == 0 {
+			errs = append(errs, err, errors.Wrapf(err, "could not get commonName, subAccountId: %s\n", id))
+			CNs = append(CNs, "")
+		} else {
+			CNs = append(CNs, *res.Response.CommonNames[0].CN)
 		}
 
-		for j := 0; j < len(req.SubaccountUins); j++ {
-			if err == nil {
-				CNs = append(CNs, *res.Response.CommonNames[j].CN)
-			} else {
-				CNs = append(CNs, "")
-			}
-		}
+		time.Sleep(time.Second / time.Duration(apiCallPerSecond))
 	}
 
 	return CNs, errs

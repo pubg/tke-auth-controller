@@ -10,12 +10,15 @@ import (
 type Worker_SubAccountId struct {
 	client    *tke.Client
 	clusterId string
+
+	apiCallPerSecond int
 }
 
-func NewWorker_SubAccountId(client *tke.Client, clusterId string) *Worker_SubAccountId {
+func NewWorker_SubAccountId(client *tke.Client, clusterId string, apiCallPerSecond int) *Worker_SubAccountId {
 	return &Worker_SubAccountId{
 		client:    client,
 		clusterId: clusterId,
+		apiCallPerSecond: apiCallPerSecond,
 	}
 }
 
@@ -36,7 +39,7 @@ func (worker *Worker_SubAccountId) ResolveCommonNames(users []*internal.User) er
 		}
 
 		// do actual request
-		CNs, errs := internal.ConvertSubAccountIdToCommonNames(worker.client, worker.clusterId, subAccountIds)
+		CNs, errs := internal.ConvertSubAccountIdToCommonNames(worker.client, worker.clusterId, subAccountIds, worker.apiCallPerSecond)
 		if len(errs) > 0 {
 			klog.Warningf("could not get CommonNames from subAccountId, ignoring. error: %s\n", errs)
 		}

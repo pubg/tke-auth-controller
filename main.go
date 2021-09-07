@@ -28,9 +28,9 @@ var (
 	regionName                  string
 	clusterName                 string
 	clusterId                   string
-	reSyncInterval              int
-	userToEmailRequestPerSecond int
-	tkeClient                   *v20180525.Client
+	reSyncInterval   int
+	apiCallPerSecond int
+	tkeClient        *v20180525.Client
 	camClient                   *cam.Client
 )
 
@@ -42,7 +42,7 @@ func init() {
 	flag.StringVar(&clusterName, "clusterName", "", "name of cluster.")
 	flag.StringVar(&clusterId, "clusterId", "", "cluster Id of target.")
 	flag.IntVar(&reSyncInterval, "reSyncInterval", 60*5, "interval (second) to reSync event trigger. does not effect reSync on configMap changes.")
-	flag.IntVar(&userToEmailRequestPerSecond, "userToEmailReqPerSec", 5, "user to email request per second. high value might exceed API Call limit.")
+	flag.IntVar(&apiCallPerSecond, "apiCallPerSecond", 5, "api request limit per second. high value might exceed API Call limit.")
 	flag.Parse()
 
 	if clusterName == "" && clusterId == "" {
@@ -130,9 +130,9 @@ func main() {
 	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
 	commonNameResolver := CommonNameResolver.NewCommonNameResolver()
 
-	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient, clusterId)
+	subAccountIdResolveWorker := CommonNameResolver.NewWorker_SubAccountId(tkeClient, clusterId, apiCallPerSecond)
 	commonNameResolver.AddWorker(subAccountIdResolveWorker)
-	emailResolveWorker := CommonNameResolver.NewWorker_Email(camClient, tkeClient, clusterId, userToEmailRequestPerSecond)
+	emailResolveWorker := CommonNameResolver.NewWorker_Email(camClient, tkeClient, clusterId, apiCallPerSecond)
 	commonNameResolver.AddWorker(emailResolveWorker)
 
 	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver)
