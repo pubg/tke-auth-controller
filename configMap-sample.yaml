@@ -3,14 +3,15 @@ kind: ConfigMap
 metadata:
   name: configmap-sample
   annotations:
-    tke-auth/binding: "true"
+    tke-auth/binding: "true" # required
 data:
-  bindingName: "xtrm-platform-team-default"
-  roleName: "xtrm:user:full-control"
+  bindingName: "xtrm-platform-team-default" # clusterRoleBinding object's name
+  roleName: "xtrm:user:full-control" # clusterRole name to bind
   users: |
     defaultUserValueType: subAccountId
     users:
       - type: subAccountId
         value: "200020745365"
-      - type: subAccountId
-        value: "200020433621"
+      - value: "200020745367" # type is populated by defaultUserValueType
+      - type: email
+        value: do.kim@pubg.com
