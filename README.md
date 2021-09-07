@@ -12,20 +12,21 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: configmap-sample # configMap name
+  name: configmap-sample
   annotations:
-    tke-auth/binding: "true" # 값은 무엇을 적어도 상관 없고, 해당 key-value 가 존재하면 됩니다.
+    tke-auth/binding: "true" # 값은 무엇을 적어도 상관 없고, 해당 key 가 존재하면 됩니다.
 data:
   # 생성/업데이트 될 clusterRoleBinding 의 이름입니다. 중복되는 이름이 없도록 주의해주세요.
   bindingName: "xtrm-platform-team-default"
   # binding 될 clusterRole 의 이름입니다.
   roleName: "xtrm:user:full-control"
-  # 사용자 목록입니다. subAccountId 를 넣거나, user email(아직 X, 추후 지원 예정) 을 넣을 수 있습니다.
+  # 사용자 목록입니다. subAccountId 를 넣거나, userId (보통 email 임) 을 넣을 수 있습니다.
   users: |
     defaultUserValueType: subAccountId
     users:
-      - type: subAccountId
+      - valueType: subAccountId
         value: "200020745365"
-      - type: subAccountId
-        value: "200020433621"
+      - value: "384273412432" # valueType 를 지정하지 않을 경ㅇ, defaultUservalueType 를 이용합니다. 
+      - valueType: email
+        value: "foobar@pubg.com"
 ```
