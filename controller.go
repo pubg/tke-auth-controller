@@ -29,7 +29,6 @@ import (
 */
 
 const (
-	AnnotationKeyTKEAuthConfigMap = "tke-auth/binding-user-data"
 	reSyncWaitTimeout             = time.Second * 5
 )
 
@@ -76,7 +75,7 @@ func (ctl *Controller) onConfigMapAdded(new interface{}) {
 		return
 	}
 
-	if !v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
+	if !v12.HasAnnotation(configMap.ObjectMeta, internal.AnnotationKeyTKEAuthConfigMap) {
 		return
 	}
 
@@ -97,8 +96,8 @@ func (ctl *Controller) onConfigMapUpdated(old, new interface{}) {
 		return
 	}
 
-	oldCfgMapIsManaged := v12.HasAnnotation(oldConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap)
-	newCfgMapIsManaged := v12.HasAnnotation(newConfigMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap)
+	oldCfgMapIsManaged := v12.HasAnnotation(oldConfigMap.ObjectMeta, internal.AnnotationKeyTKEAuthConfigMap)
+	newCfgMapIsManaged := v12.HasAnnotation(newConfigMap.ObjectMeta, internal.AnnotationKeyTKEAuthConfigMap)
 
 	if !oldCfgMapIsManaged && !newCfgMapIsManaged {
 		return
@@ -117,7 +116,7 @@ func (ctl *Controller) onConfigMapDeleted(old interface{}) {
 		return
 	}
 
-	if !v12.HasAnnotation(configMap.ObjectMeta, AnnotationKeyTKEAuthConfigMap) {
+	if !v12.HasAnnotation(configMap.ObjectMeta, internal.AnnotationKeyTKEAuthConfigMap) {
 		return
 	}
 
