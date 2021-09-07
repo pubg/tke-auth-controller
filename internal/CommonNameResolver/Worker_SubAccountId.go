@@ -4,6 +4,7 @@ import (
 	"example.com/tke-auth-controller/internal"
 	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
 	"github.com/thoas/go-funk"
+	"k8s.io/klog/v2"
 )
 
 type Worker_SubAccountId struct {
@@ -35,9 +36,9 @@ func (worker *Worker_SubAccountId) ResolveCommonNames(users []*internal.User) er
 		}
 
 		// do actual request
-		CNs, err := internal.ConvertSubAccountIdToCommonNames(worker.client, worker.clusterId, subAccountIds)
-		if err != nil {
-			return err
+		CNs, errs := internal.ConvertSubAccountIdToCommonNames(worker.client, worker.clusterId, subAccountIds)
+		if len(errs) > 0 {
+			klog.Warningf("could not get CommonNames from subAccountId, ignoring. error: %s\n", errs)
 		}
 
 		// convert user's subAccountId to CommonName

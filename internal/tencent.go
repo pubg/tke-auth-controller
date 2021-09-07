@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
@@ -70,12 +71,13 @@ const (
 	SubAccountIdConversionUserCountPerRequest = 100
 )
 
-func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string) ([]string, error) {
+func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subAccountIds []string) ([]string, []error) {
 	// according to document, maximum subAccount per request is 50
 	// check https://intl.cloud.tencent.com/document/product/457/41571?lang=en&pg= for more info.
 	const maxSubAccountPerReq = 50
 
 	CNs := make([]string, 0)
+	errs := make([]error, 0)
 
 	for i := 0; i < len(subAccountIds)/maxSubAccountPerReq+1; i++ {
 		length := min(maxSubAccountPerReq, len(subAccountIds)-i*maxSubAccountPerReq)
@@ -90,15 +92,15 @@ func ConvertSubAccountIdToCommonNames(client *tke.Client, clusterId string, subA
 
 		res, err := client.DescribeClusterCommonNames(req)
 		if err != nil {
-			return nil, err
-		}
-
-		for _, commonName := range res.Response.CommonNames {
-			CNs = append(CNs, *commonName.CN)
+			errs = append(errs, errors.Wrap(err, "could not get commonNames."))
+		} else {
+			for _, commonName := range res.Response.CommonNames {
+				CNs = append(CNs, *commonName.CN)
+			}
 		}
 	}
 
-	return CNs, nil
+	return CNs, errs
 }
 
 func GetSubAccountIdOfUserName(client *cam.Client, clusterId string, userId string) (*string, error) {
@@ -115,13 +117,14 @@ func GetSubAccountIdOfUserName(client *cam.Client, clusterId string, userId stri
 	return &str, nil
 }
 
-func GetSubAccountIdOfUserNames(client *cam.Client, clusterId string, userNames []string, requestPerSecond int) ([]string, error) {
+func GetSubAccountIdOfUserNames(client *cam.Client, clusterId string, userNames []string, requestPerSecond int) ([]string, []error) {
 	users := make([]string, 0)
+	errs := make([]error, 0)
 
 	for _, name := range userNames {
 		userId, err := GetSubAccountIdOfUserName(client, clusterId, name)
 		if err != nil {
-			return nil, err
+			errs = append(errs, errors.Wrapf(err, "could not get user info, userId: %s\n", *userId))
 		}
 
 		users = append(users, *userId)
@@ -129,7 +132,7 @@ func GetSubAccountIdOfUserNames(client *cam.Client, clusterId string, userNames 
 		time.Sleep(time.Second / time.Duration(requestPerSecond))
 	}
 
-	return users, nil
+	return users, errs
 }
 
 func min(a, b int) int {

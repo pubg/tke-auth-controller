@@ -2,10 +2,10 @@ package CommonNameResolver
 
 import (
 	"example.com/tke-auth-controller/internal"
-	"github.com/pkg/errors"
 	cam "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam/v20190116"
 	tke "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke/v20180525"
 	"github.com/thoas/go-funk"
+	"k8s.io/klog/v2"
 )
 
 type Worker_Email struct {
@@ -42,15 +42,15 @@ func (worker *Worker_Email) ResolveCommonNames(users []*internal.User) error {
 		}
 
 		// convert names to subAccountIds for request
-		subAccountIds, err := internal.GetSubAccountIdOfUserNames(worker.camClient, worker.clusterId, names, worker.userToRequestPerSecond)
-		if err != nil {
-			return errors.Wrap(err, "cannot get subAccountIds from email.\n")
+		subAccountIds, errs := internal.GetSubAccountIdOfUserNames(worker.camClient, worker.clusterId, names, worker.userToRequestPerSecond)
+		if len(errs) > 0 {
+			klog.Warningf("could not get subAccountId from email, ignoring. error: %s\n", errs)
 		}
 
 		// do actual request
 		CNs, err := internal.ConvertSubAccountIdToCommonNames(worker.tkeClient, worker.clusterId, subAccountIds)
-		if err != nil {
-			return err
+		if len(err) > 0 {
+			klog.Warningf("could not get CommonNames from subAccountId, ignoring. error: %s\n", errs)
 		}
 
 		// convert user's subAccountId to CommonName
