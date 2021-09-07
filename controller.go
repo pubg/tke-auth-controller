@@ -29,7 +29,7 @@ import (
 */
 
 const (
-	reSyncWaitTimeout             = time.Second * 5
+	reSyncWaitTimeout             = time.Millisecond * 500
 )
 
 type Controller struct {
@@ -43,11 +43,9 @@ type Controller struct {
 	tkeClient *tke.Client
 
 	commonNameResolver *CommonNameResolver.CommonNameResolver
-
-	reSyncInterval int
 }
 
-func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string, CNResolver *CommonNameResolver.CommonNameResolver, reSyncInterval int) (*Controller, error) {
+func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuthConfigMaps, tkeAuthCRB *internal.TKEAuthClusterRoleBindings, tkeClient *tke.Client, clusterId string, CNResolver *CommonNameResolver.CommonNameResolver) (*Controller, error) {
 	ctl := &Controller{
 		kubeClient:                     kubeClient,
 		tkeAuthConfigMap:               tkeAuthCfg,
@@ -56,7 +54,6 @@ func NewController(kubeClient kubernetes.Interface, tkeAuthCfg *internal.TKEAuth
 		tkeClient:                      tkeClient,
 		clusterId:                      clusterId,
 		commonNameResolver:             CNResolver,
-		reSyncInterval:                 reSyncInterval,
 	}
 
 	ctl.tkeAuthConfigMap.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -178,18 +175,6 @@ func (ctl *Controller) syncAllClusterRoleBinding() {
 	klog.Infoln("ClusterRoleBindings updated.")
 }
 
-func (ctl *Controller) triggerReSyncOnInterval(trigger <-chan time.Time, stopCh <-chan struct{}) {
-	for {
-		select {
-		case <-trigger:
-			ctl.reserveReSyncTimer()
-			break
-		case <-stopCh:
-			return
-		}
-	}
-}
-
 func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 
@@ -200,13 +185,8 @@ func (ctl *Controller) Run(stopCh <-chan struct{}) error {
 		return fmt.Errorf("Failed to wait for caches to sync.\n")
 	}
 
-	klog.Infof("set reSync callback interval to %d second.\n", ctl.reSyncInterval)
-	ticker := time.NewTicker(time.Second * time.Duration(ctl.reSyncInterval))
-	ctl.triggerReSyncOnInterval(ticker.C, stopCh)
-
 	klog.Infoln("Controller running...")
 	<-stopCh
-	ticker.Stop()
 	klog.Infoln("Controller stopped.")
 
 	return nil

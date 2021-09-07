@@ -125,7 +125,7 @@ func main() {
 		klog.Fatalf("cannot create kubeClient, err: %s", err.Error())
 	}
 
-	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*10)
+	informerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second * time.Duration(reSyncInterval))
 	tkeAuthCfg := internal.NewTKEAuthConfigMaps(informerFactory.Core().V1().ConfigMaps(), informerFactory.Core().V1().ConfigMaps().Lister())
 	tkeAuthCRB := internal.NewTKEAuthClusterRoleBinding(informerFactory.Rbac().V1().ClusterRoleBindings(), informerFactory.Rbac().V1().ClusterRoleBindings().Lister(), kubeClient.RbacV1().ClusterRoleBindings(), stopCh)
 	commonNameResolver := CommonNameResolver.NewCommonNameResolver()
@@ -135,7 +135,7 @@ func main() {
 	emailResolveWorker := CommonNameResolver.NewWorker_Email(camClient, tkeClient, clusterId, userToEmailRequestPerSecond)
 	commonNameResolver.AddWorker(emailResolveWorker)
 
-	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver, reSyncInterval)
+	controller, err := NewController(kubeClient, tkeAuthCfg, tkeAuthCRB, tkeClient, clusterId, commonNameResolver)
 	if err != nil {
 		klog.Fatalf("cannot create controller, err: %s", err.Error())
 	}
