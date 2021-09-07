@@ -18,7 +18,7 @@ type TKEAuth struct {
 }
 
 func (t *TKEAuth) ToClusterRoleBinding() *v1.ClusterRoleBinding {
-	roleRef := toClusterRoleRef(t.BindingName)
+	roleRef := toClusterRoleRef(t.RoleName)
 	subjects := make([]v1.Subject, 0)
 
 	for _, user := range t.Users {
