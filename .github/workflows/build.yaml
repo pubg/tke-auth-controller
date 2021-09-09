@@ -33,8 +33,10 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: us-east-1
-      - uses: aws-actions/amazon-ecr-login@v1
-        id: login-ecr
+      - name: login to public ecr
+        shell: bash
+        run: |
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
       - name: build, tag and push image
         shell: bash
         run: |
