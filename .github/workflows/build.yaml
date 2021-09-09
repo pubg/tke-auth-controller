@@ -30,17 +30,16 @@ jobs:
           semver=$(semver "$current_tag")
           echo "extracted semver: $semver"
           echo "::set-output name=SEMVER::$semver"
-      - name: login to dockerhub
-        uses: docker/login-action@v1
+      - uses: aws-actions/configure-aws-credentials@v1
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: build and push
+          aws-region: ap-northeast-2
+      - uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
+      - name: build, tag and push image
         shell: bash
         run: |
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-          docker build . --tag "zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}"
-          docker push zzzz465/0e43d9d1140c48102ef:${{ steps.semver.outputs.SEMVER }}
+          docker build . -t public.ecr.aws/pubg-new-state/tke-auth-controller:${{ steps.semver.outputs.SEMVER }}
+          docker push public.ecr.aws/pubg-new-state/tke-auth-controller:${{ steps.semver.outputs.SEMVER }}
       - name: slack-notify
         uses: 8398a7/action-slack@v3.9.1
         with:
