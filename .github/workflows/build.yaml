@@ -32,7 +32,7 @@ jobs:
           echo "::set-output name=SEMVER::$semver"
       - uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-region: ap-northeast-2
+          aws-region: us-east-1
       - uses: aws-actions/amazon-ecr-login@v1
         id: login-ecr
       - name: build, tag and push image
