@@ -11,9 +11,11 @@ jobs:
       - name: install aws cli v2
         shell: bash
         run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
+          if [ ! `command -v aws` ]; then
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+          fi
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0 # to fetch all tags
