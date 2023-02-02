@@ -1,4 +1,4 @@
-FROM docker.io/debian:bullseye-slim
+FROM docker.io/debian:bullseye-20230109
 
 # tencent client requires curl to run
 RUN apt-get update -y && apt-get install -y ca-certificates
