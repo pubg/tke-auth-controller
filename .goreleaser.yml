@@ -44,7 +44,7 @@ docker_manifests:
       - "harbor.pubg.io/public/tke-auth-controller:{{ .Version }}-amd64"
       - "harbor.pubg.io/public/tke-auth-controller:{{ .Version }}-arm64"
 release:
-  disable: true
+  disable: false
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
