@@ -1,65 +1,34 @@
-name: "build tke-auth-controller"
+name: "deploy tke-auth-controller"
 on:
   push:
     tags:
       - 'v*.*.*'
+
 jobs:
   build_image:
+    permissions:
+      id-token: write
+      contents: read
     name: build docker image using Dockerfile
-    runs-on: ["self-hosted", "Linux", "DevOps"]
+    runs-on: ubuntu-22.04
     steps:
-      - name: install aws cli v2
-        shell: bash
-        run: |
-          if [ ! `command -v aws` ]; then
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
-          fi
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0 # to fetch all tags
-      - name: setup node 16.x # setup-node@v2 can't used on enterprise github.
-        shell: bash
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-      - name: setup libraries
-        shell: bash
-        run: |
-          sudo npm i -g yarn
-          sudo yarn global add semver
-      - name: get semver
-        id: semver
-        shell: bash
-        run: |
-          current_tag=$(git describe --tags --abbrev=0)
-          echo "current_tag: $current_tag"
-          semver=$(semver "$current_tag")
-          echo "extracted semver: $semver"
-          echo "::set-output name=SEMVER::$semver"
-      - name: login to public ecr
-        shell: bash
-        run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-      - name: build, tag and push image
-        shell: bash
-        run: |
-          docker build . -t public.ecr.aws/pubg-new-state/tke-auth-controller:${{ steps.semver.outputs.SEMVER }}
-          docker push public.ecr.aws/pubg-new-state/tke-auth-controller:${{ steps.semver.outputs.SEMVER }}
-      - name: slack-notify
-        uses: 8398a7/action-slack@v3.9.1
+      - name: Set up Go
+        uses: actions/setup-go@v2
         with:
-          github_base_url: https://github.krafton.com
-          status: custom
-          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
-          custom_payload: |
-            {
-              attachments: [{
-                color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
-                text: `commit: ${ process.env.AS_REPO }@${ process.env.AS_COMMIT }\nauthor: ${ process.env.AS_AUTHOR }\nmessage: ${ process.env.AS_MESSAGE }\naction: ${ process.env.AS_ACTION }`
-              }]
-            }
+          go-version: 1.19
+      - name: Login to Harbor Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: harbor.pubg.io
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          version: latest
+          args: release --rm-dist
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.PLATFORM_SLACK_WEBHOOK_URL }}
-        if: always()
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
