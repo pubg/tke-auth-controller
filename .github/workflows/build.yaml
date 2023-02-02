@@ -7,8 +7,7 @@ on:
 jobs:
   build_image:
     permissions:
-      id-token: write
-      contents: read
+      contents: write
     name: build docker image using Dockerfile
     runs-on: ubuntu-22.04
     steps:
@@ -35,6 +34,6 @@ jobs:
         uses: goreleaser/goreleaser-action@v3
         with:
           version: latest
-          args: release --clean --debug
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
