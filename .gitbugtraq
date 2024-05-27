@@ -1,15 +1,3 @@
-[bugtraq "JIRA-META"]
-	url = https://jira.krafton.com/browse/%BUGID%
-	logregex = (META-\\d+)
-
-[bugtraq "JIRA-ANUY"]
-	url = https://jira.krafton.com/browse/%BUGID%
-	logregex = (ANUY-\\d+)
-
-[bugtraq "JIRA-ASKSBX"]
-	url = https://jira.krafton.com/browse/%BUGID%
-	logregex = (ASKSBX-\\d+)
-
 [bugtraq "GITHUB"]
 	url = https://github.com/pubg/tke-auth-controller/pull/%BUGID%
 	loglinkregex = "#\\d+"
